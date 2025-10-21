@@ -5,28 +5,29 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path="./.env")
 
-# Global variables use in url f string
+# Configuration used to build YouTube Data API request URLs
 API_KEY = os.getenv("API_KEY")
 CHANNEL_HANDLE = "MrBeast"
 maxResults = 50
-# Function to get playlist ID, which will be used to get video ids
+
+# Returns the channel's uploads playlist ID (used to list all uploaded videos
 def get_playlist_id():
     
     try:
-        # url variable for youtube page
+        # Build channels.list request URL to fetch the uploads playlis
         url = f'https://youtube.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle={CHANNEL_HANDLE}&key={API_KEY}'
 
-        # makes api request to the url
+        # Send the request to the YouTube Data API
         response = requests.get(url)
         
         response.raise_for_status()
 
-        # create a var that will hold entire response not just the code
+        # Parse JSON response body
         data = response.json()
-        # uses json dumps method, using data var and indent 4 spaces
+        # Debug: pretty-print the entire API response
         #print(json.dumps(data, indent=4))
 
-        # parses json dump
+        # Extract uploads playlist ID from the response
         channel_items = data['items'][0]
         channel_playlistId = channel_items['contentDetails']['relatedPlaylists']['uploads']
         #print(channel_playlistId)
@@ -35,28 +36,31 @@ def get_playlist_id():
     except requests.exceptions.RequestException as e:
         raise (e)
 
-# Function to get video IDs tha will be iterated through
+# Returns a list of video IDs from the given uploads playlist (handles pagination)
 def get_video_ids(playlistId):
     
     video_ids = []
     pageToken = None
+    # Base playlistItems.list URL; pageToken appended as needed
     base_url = f'https://youtube.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults={maxResults}&playlistId={playlistId}&key={API_KEY}'
 
     try:
         while True:
             url = base_url
             if pageToken:
+                # Request the next page when a pageToken is present
                 url += f'&pageToken={pageToken}'
             response = requests.get(url)
             
             response.raise_for_status()
 
             data = response.json()
-
+            # Collect each video's ID from contentDetails
             for item in data.get('items', []):
                 video_id = item['contentDetails']['videoId']
                 video_ids.append(video_id)
 
+            # Advance to next page; stop when there is no nextPageToken
             pageToken = data.get('nextPageToken')
 
             if not pageToken:
