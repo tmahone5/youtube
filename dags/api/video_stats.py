@@ -2,17 +2,21 @@ import re
 import statistics
 import requests
 import json
-import os
-from dotenv import load_dotenv
+# import os
+# from dotenv import load_dotenv
+# load_dotenv(dotenv_path="./.env")
 from datetime import date
+from airflow.decorators import task
+from airflow.models import Variable
 
-load_dotenv(dotenv_path="./.env")
+
 
 # Configuration used to build YouTube Data API request URLs
-API_KEY = os.getenv("API_KEY")
-CHANNEL_HANDLE = "MrBeast"
+API_KEY = Variable.get("API_KEY")
+CHANNEL_HANDLE = Variable.get("CHANNEL_HANDLE")
 maxResults = 50
 
+@task
 # Returns the channel's uploads playlist ID (used to list all uploaded videos
 def get_playlist_id():
     
@@ -38,7 +42,8 @@ def get_playlist_id():
         
     except requests.exceptions.RequestException as e:
         raise (e)
-
+    
+@task
 # Returns a list of video IDs from the given uploads playlist (handles pagination)
 def get_video_ids(playlistId):
     
@@ -74,12 +79,13 @@ def get_video_ids(playlistId):
     except requests.exceptions.RequestException as e:
         raise e
 
+@task
 # Generator function that splits a list of video IDs into smaller batches.
 def batch_list(video_id_lst, batch_size):
     for video_id in range(0,len(video_id_lst), batch_size):
         yield video_id_lst[video_id : video_id + batch_size]
 
-
+@task
 def extract_video_data(video_ids):
     extracted_data = []
 
@@ -125,6 +131,7 @@ def extract_video_data(video_ids):
     except requests.exceptions.RequestException as e:
         raise e
 
+@task
 def save_to_json(extracted_data):
     file_path = f'./data/youtube_data_{date.today()}.json'
 

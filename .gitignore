@@ -2,3 +2,4 @@ venv/
 _pycache_/
 .env
 logs/
+docker/postgres/01-create-airflow.sh
